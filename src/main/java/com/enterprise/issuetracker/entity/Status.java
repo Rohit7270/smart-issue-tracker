@@ -23,6 +23,7 @@ public class Status {
     @Column(nullable = false, unique = true, length = 30)
     private String name;
 
+    @Builder.Default
     @Column(name = "closed_status", nullable = false)
     private boolean closedStatus = false; // flag indicating if the ticket is closed/resolved in this status
 }

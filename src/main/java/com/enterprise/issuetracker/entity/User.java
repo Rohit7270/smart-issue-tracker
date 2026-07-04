@@ -38,6 +38,7 @@ public class User extends BaseAuditEntity {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
 
