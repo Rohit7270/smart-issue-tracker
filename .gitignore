@@ -21,3 +21,6 @@ bin/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Embedded Maven distribution
+maven/

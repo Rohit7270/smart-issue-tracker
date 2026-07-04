@@ -26,7 +26,7 @@ INSERT INTO users (username, email, password, full_name, active, created_at)
 VALUES (
     'admin',
     'admin@tracker.com',
-    '$2a$10$wKz0bZecy1x2.0QjM8b76.1M/sZzQ0NlG43F.ZzC8i/hVbH5M3eEa',
+    '$2a$10$7RwED8W0c5gDWXtZ6UFwKuVL3.5NYa5HObbnOoh0A4wsHLOImsqnK',
     'System Administrator',
     true,
     CURRENT_TIMESTAMP
@@ -36,7 +36,7 @@ INSERT INTO users (username, email, password, full_name, active, created_at)
 VALUES (
     'manager',
     'manager@tracker.com',
-    '$2a$10$wKz0bZecy1x2.0QjM8b76.1M/sZzQ0NlG43F.ZzC8i/hVbH5M3eEa',
+    '$2a$10$7RwED8W0c5gDWXtZ6UFwKuVL3.5NYa5HObbnOoh0A4wsHLOImsqnK',
     'Project Manager',
     true,
     CURRENT_TIMESTAMP
@@ -46,7 +46,7 @@ INSERT INTO users (username, email, password, full_name, active, created_at)
 VALUES (
     'developer',
     'developer@tracker.com',
-    '$2a$10$wKz0bZecy1x2.0QjM8b76.1M/sZzQ0NlG43F.ZzC8i/hVbH5M3eEa',
+    '$2a$10$7RwED8W0c5gDWXtZ6UFwKuVL3.5NYa5HObbnOoh0A4wsHLOImsqnK',
     'Software Engineer',
     true,
     CURRENT_TIMESTAMP
