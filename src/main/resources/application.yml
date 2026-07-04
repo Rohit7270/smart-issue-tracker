@@ -1,0 +1,57 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: smart-issue-tracker
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:issue_tracker_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+    open-in-view: false
+
+  sql:
+    init:
+      mode: always # Seeding default database lookup tables and seed data
+
+# OpenAPI Swagger documentation configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+# Application Security Custom properties
+app:
+  security:
+    jwt:
+      # Symmetric HMAC Key. Must be 256-bit (32 bytes) minimum.
+      # Default base64 encoded key for local development: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
+      secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      # Access token: 1 hour (3600000 ms)
+      expiration-ms: ${JWT_EXPIRATION:3600000}
+      # Refresh token: 7 days (604800000 ms)
+      refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:604800000}
+
+logging:
+  level:
+    root: INFO
+    com.enterprise.issuetracker: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG

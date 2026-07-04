@@ -1,0 +1,23 @@
+# Maven compile outputs
+target/
+*.releaseBackup
+
+# Logs
+*.log
+logs/
+
+# Local uploads
+uploads/
+
+# IDE settings
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+bin/
+.vscode/
+
+# OS specific files
+.DS_Store
+Thumbs.db
