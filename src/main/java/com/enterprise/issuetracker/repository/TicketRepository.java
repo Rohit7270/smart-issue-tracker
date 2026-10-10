@@ -12,51 +12,52 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Spring Data JPA Repository for Ticket entity.
+ *
+ * By extending JpaRepository<Ticket, Long>, Spring automatically generates
+ * standard CRUD methods: save(), findById(), findAll(), deleteById().
+ *
+ * Extending JpaSpecificationExecutor<Ticket> allows dynamic filtering with Specifications.
+ */
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
 
-    // Count tickets by status closed flag
+    // Derived Query Method: Spring creates SQL from method name automatically
     long countByStatusClosedStatus(boolean closedStatus);
 
-    // Count tickets by priority name and closed state
+    // Derived Query Method: Count by priority name and status closed flag
     long countByPriorityNameAndStatusClosedStatus(String priorityName, boolean closedStatus);
 
+    // Simple derived query methods for finding tickets
+    List<Ticket> findByStatusId(Long statusId);
+
+    List<Ticket> findByAssigneeId(Long assigneeId);
+
+    List<Ticket> findByReporterId(Long reporterId);
+
+    List<Ticket> findByCategoryId(Long categoryId);
+
+    // Simple JPQL Query: Count active high priority tickets
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.priority.weight >= 3 AND t.status.closedStatus = false")
     long countActiveHighPriorityTickets();
 
     // Dynamic filtering using JpaSpecificationExecutor
     Page<Ticket> findAll(Specification<Ticket> spec, Pageable pageable);
 
-    // Dashboard: Ticket count by category
+    // Simple JPQL Query: Count tickets grouped by category name
     @Query("SELECT t.category.name as categoryName, COUNT(t) as count FROM Ticket t GROUP BY t.category.name")
     List<Map<String, Object>> countTicketsByCategory();
 
-    // Dashboard: Ticket count by status
+    // Simple JPQL Query: Count tickets grouped by status name
     @Query("SELECT t.status.name as statusName, COUNT(t) as count FROM Ticket t GROUP BY t.status.name")
     List<Map<String, Object>> countTicketsByStatus();
 
-    // Dashboard: Ticket count by priority
+    // Simple JPQL Query: Count tickets grouped by priority name
     @Query("SELECT t.priority.name as priorityName, COUNT(t) as count FROM Ticket t GROUP BY t.priority.name")
     List<Map<String, Object>> countTicketsByPriority();
 
-    // Dashboard: Ticket count by assignee
+    // Simple JPQL Query: Count tickets grouped by assignee
     @Query("SELECT COALESCE(t.assignee.username, 'Unassigned') as assigneeName, COUNT(t) as count FROM Ticket t GROUP BY t.assignee.username")
     List<Map<String, Object>> countTicketsByAssignee();
-
-    // Dashboard: Monthly ticket count trends using PostgreSQL native queries
-    @Query(value = "SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(id) as count " +
-            "FROM tickets " +
-            "GROUP BY TO_CHAR(created_at, 'YYYY-MM') " +
-            "ORDER BY TO_CHAR(created_at, 'YYYY-MM') ASC", nativeQuery = true)
-    List<Map<String, Object>> getMonthlyTicketStatistics();
-
-    // Dashboard: User Productivity (number of tickets completed and avg resolution time in hours)
-    @Query(value = "SELECT u.username as username, COUNT(t.id) as resolvedCount, " +
-            "ROUND(AVG(EXTRACT(EPOCH FROM (t.updated_at - t.created_at)) / 3600)::numeric, 2) as avgResolutionHours " +
-            "FROM tickets t " +
-            "JOIN users u ON t.assignee_id = u.id " +
-            "JOIN statuses s ON t.status_id = s.id " +
-            "WHERE s.closed_status = true " +
-            "GROUP BY u.username", nativeQuery = true)
-    List<Map<String, Object>> getUserProductivityStatistics();
 }

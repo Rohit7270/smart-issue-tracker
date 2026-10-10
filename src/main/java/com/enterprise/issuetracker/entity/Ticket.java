@@ -59,4 +59,8 @@ public class Ticket extends BaseAuditEntity {
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Attachment> attachments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Assignment> assignments = new ArrayList<>();
 }

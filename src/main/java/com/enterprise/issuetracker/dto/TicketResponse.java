@@ -25,4 +25,5 @@ public class TicketResponse {
     private LocalDateTime updatedAt;
     private List<CommentResponse> comments;
     private List<AttachmentResponse> attachments;
+    private List<AssignmentResponse> assignments;
 }

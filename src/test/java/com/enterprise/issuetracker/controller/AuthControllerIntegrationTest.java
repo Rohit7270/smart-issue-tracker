@@ -11,7 +11,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.enterprise.issuetracker.entity.RoleType;
+import com.enterprise.issuetracker.entity.User;
+import com.enterprise.issuetracker.repository.UserRepository;
+
+import java.util.Set;
+
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -25,6 +33,9 @@ public class AuthControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Test
     public void testRegisterUser_Success() throws Exception {
@@ -40,6 +51,29 @@ public class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("User registered successfully!"));
+    }
+
+    @Test
+    public void testRegisterUser_CannotSelfAssignAdminOrManager() throws Exception {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("unauthorizedadmin");
+        request.setEmail("unauthorizedadmin@example.com");
+        request.setPassword("password123");
+        request.setFullName("Untrusted User");
+        request.setRoles(Set.of("ADMIN", "MANAGER"));
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("User registered successfully!"));
+
+        User registeredUser = userRepository.findByUsername("unauthorizedadmin")
+                .orElseThrow(() -> new AssertionError("User should have been created in database"));
+
+        assertEquals(1, registeredUser.getRoles().size());
+        assertEquals(RoleType.ROLE_USER, registeredUser.getRoles().iterator().next().getName());
     }
 
     @Test

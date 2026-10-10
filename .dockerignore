@@ -1,0 +1,6 @@
+target/
+maven/
+.git/
+.gitignore
+*.md
+uploads/

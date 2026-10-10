@@ -1,6 +1,9 @@
 package com.enterprise.issuetracker.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.*;
 
 import java.util.HashSet;
@@ -27,12 +30,15 @@ public class User extends BaseAuditEntity {
     private Long id;
 
     @Column(nullable = false, length = 50)
+    @NotBlank
     private String username;
 
     @Column(nullable = false, length = 100)
+    @Email
     private String email;
 
     @Column(nullable = false)
+    @NotEmpty
     private String password;
 
     @Column(name = "full_name", nullable = false, length = 100)

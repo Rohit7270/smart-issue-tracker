@@ -8,8 +8,18 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Spring Data JPA Specification utility for dynamic ticket filtering.
+ *
+ * Instead of writing multiple static queries, a Specification builds the SQL
+ * "WHERE" clause dynamically based on which filters are provided by the user.
+ */
 public class TicketSpecification {
 
+    /**
+     * Builds a composite Specification combining all optional search filters.
+     * If a filter parameter is null or empty, it is simply skipped.
+     */
     public static Specification<Ticket> filterTickets(
             String keyword,
             Long categoryId,
@@ -19,7 +29,9 @@ public class TicketSpecification {
             Long assigneeId) {
 
         return (root, query, criteriaBuilder) -> {
+            // List to hold all active WHERE conditions (predicates)
             List<Predicate> predicates = new ArrayList<>();
+
 
             // Keyword Search: check if keyword matches title or description (case-insensitive)
             if (StringUtils.hasText(keyword)) {

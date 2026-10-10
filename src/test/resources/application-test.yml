@@ -18,3 +18,7 @@ spring:
     init:
       mode: always
       data-locations: classpath:data-test.sql
+
+app:
+  upload:
+    dir: target/test-uploads

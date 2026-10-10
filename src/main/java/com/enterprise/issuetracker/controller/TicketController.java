@@ -1,14 +1,11 @@
 package com.enterprise.issuetracker.controller;
 
 import com.enterprise.issuetracker.dto.*;
+import com.enterprise.issuetracker.service.FileStorageService;
 import com.enterprise.issuetracker.service.TicketService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,32 +17,27 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.nio.file.*;
-import java.util.UUID;
+import java.util.List;
 
+/**
+ * Controller handling all ticket/issue endpoints.
+ * Demonstrates clean REST conventions with constructor injection.
+ */
 @RestController
 @RequestMapping("/api/v1/tickets")
-@Tag(name = "Ticket Management", description = "Endpoints for creating, updating, commenting, uploading files, and listing issues")
-@SecurityRequirement(name = "Bearer Authentication")
 public class TicketController {
 
     private final TicketService ticketService;
-    private final Path fileStorageLocation = Paths.get("uploads").toAbsolutePath().normalize();
+    private final FileStorageService fileStorageService;
 
     @Autowired
-    public TicketController(TicketService ticketService) {
+    public TicketController(TicketService ticketService, FileStorageService fileStorageService) {
         this.ticketService = ticketService;
-        try {
-            Files.createDirectories(this.fileStorageLocation);
-        } catch (Exception ex) {
-            throw new RuntimeException("Could not create the directory where the uploaded files will be stored.", ex);
-        }
+        this.fileStorageService = fileStorageService;
     }
 
+    // 1. Create a new ticket
     @PostMapping
-    @Operation(summary = "Create a new ticket", description = "Reporter is resolved automatically from the authenticated JWT session.")
     public ResponseEntity<ApiResponse<TicketResponse>> createTicket(
             @Valid @RequestBody TicketRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -54,15 +46,15 @@ public class TicketController {
                 .body(ApiResponse.success(created, "Ticket created successfully"));
     }
 
+    // 2. Get ticket by ID
     @GetMapping("/{id}")
-    @Operation(summary = "Get ticket by ID", description = "Retrieves ticket details including categories, reporter, assignee, comments, and attachments.")
     public ResponseEntity<ApiResponse<TicketResponse>> getTicketById(@PathVariable Long id) {
         TicketResponse ticket = ticketService.getTicketById(id);
         return ResponseEntity.ok(ApiResponse.success(ticket, "Ticket details retrieved successfully"));
     }
 
+    // 3. Update ticket details
     @PutMapping("/{id}")
-    @Operation(summary = "Update ticket properties", description = "Restricted by business rules: Reporters can edit details if ticket is open; Assignees can change status; Managers/Admins can edit everything.")
     public ResponseEntity<ApiResponse<TicketResponse>> updateTicket(
             @PathVariable Long id,
             @Valid @RequestBody TicketRequest request,
@@ -71,8 +63,36 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(updated, "Ticket updated successfully"));
     }
 
+    // 4. Assign ticket to a developer (Manager/Admin only)
+    @PatchMapping("/{id}/assign")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketResponse>> assignTicket(
+            @PathVariable Long id,
+            @Valid @RequestBody AssignTicketRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        TicketResponse updated = ticketService.assignTicket(id, request, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(updated, "Ticket assigned successfully"));
+    }
+
+    // 5. Update ticket status (e.g. Open -> In Progress -> Resolved)
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<TicketResponse>> updateTicketStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateTicketStatusRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        TicketResponse updated = ticketService.updateTicketStatus(id, request, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(updated, "Ticket status updated successfully"));
+    }
+
+    // 6. Get assignment history for a ticket
+    @GetMapping("/{id}/assignments")
+    public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getTicketAssignments(@PathVariable Long id) {
+        List<AssignmentResponse> assignments = ticketService.getTicketAssignments(id);
+        return ResponseEntity.ok(ApiResponse.success(assignments, "Assignment history retrieved successfully"));
+    }
+
+    // 7. Delete ticket (Reporter or Admin)
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete ticket (Reporter or Admin only)", description = "Permanently deletes a ticket by ID. Logs audit entry.")
     public ResponseEntity<ApiResponse<Void>> deleteTicket(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -80,8 +100,8 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success("Ticket deleted successfully"));
     }
 
+    // 8. Search and filter tickets
     @GetMapping
-    @Operation(summary = "Search and filter tickets dynamically", description = "Allows keyword searches and filtering by category, priority, status, reporter, and assignee.")
     public ResponseEntity<ApiResponse<Page<TicketResponse>>> searchTickets(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
@@ -100,8 +120,8 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(tickets, "Tickets retrieved successfully"));
     }
 
+    // 9. Add comment to ticket
     @PostMapping("/{id}/comments")
-    @Operation(summary = "Add a comment to a ticket", description = "Registers comment content from the currently logged in user.")
     public ResponseEntity<ApiResponse<CommentResponse>> addComment(
             @PathVariable Long id,
             @Valid @RequestBody CommentRequest request,
@@ -110,61 +130,36 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(comment, "Comment added successfully"));
     }
 
+    // 10. Upload file attachment
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload a file attachment to a ticket", description = "Uploads a document or image, saves it locally, and saves metadata in the database.")
     public ResponseEntity<ApiResponse<AttachmentResponse>> uploadAttachment(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal UserDetails userDetails) throws IOException {
+            @AuthenticationPrincipal UserDetails userDetails) {
         
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to upload empty file"));
-        }
-
-        String originalFileName = file.getOriginalFilename();
-        String fileExtension = "";
-        if (originalFileName != null && originalFileName.contains(".")) {
-            fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
-        }
-        
-        String cleanFileName = UUID.randomUUID().toString() + fileExtension;
-        Path targetLocation = this.fileStorageLocation.resolve(cleanFileName);
-        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-        // Standardized download URL
-        String fileUrl = "/api/v1/tickets/attachments/download/" + cleanFileName;
+        String storedFileName = fileStorageService.storeFile(file);
+        String fileUrl = "/api/v1/tickets/attachments/download/" + storedFileName;
 
         AttachmentResponse attachment = ticketService.addAttachment(
-                id, originalFileName, file.getContentType(), fileUrl, userDetails.getUsername()
+                id, file.getOriginalFilename(), file.getContentType(), fileUrl, userDetails.getUsername()
         );
 
         return ResponseEntity.ok(ApiResponse.success(attachment, "File uploaded successfully"));
     }
 
+    // 11. Download file attachment
     @GetMapping("/attachments/download/{fileName:.+}")
-    @Operation(summary = "Download a ticket file attachment", description = "Serves the file content physically from storage.")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
-        try {
-            Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists()) {
-                String contentType = "application/octet-stream";
-                return ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                        .body(resource);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (MalformedURLException ex) {
-            return ResponseEntity.badRequest().build();
-        }
+        Resource resource = fileStorageService.loadFileAsResource(fileName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 
+    // 12. View system activity logs (Admin only)
     @GetMapping("/activities")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get system activity logs (Admin only)", description = "Retrieve a global audit trail of all ticket updates and admin actions.")
     public ResponseEntity<ApiResponse<Page<ActivityLogResponse>>> getAllActivityLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
